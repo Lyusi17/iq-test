@@ -1,30 +1,55 @@
-from fastapi import FastAPI, File, UploadFile
-import tensorflow as tf
-import numpy as np
-from PIL import Image
-import io
+﻿import streamlit as st
+import random
 
-app = FastAPI()
+st.title("🧠 IQ Test")
 
-model = tf.keras.models.load_model("emotion_model.keras")
+def generate_question():
+    start = random.randint(1, 20)
+    step = random.randint(2, 10)
 
-classes = ["Angry", "Fear", "Happy", "Sad", "Surprise"]
+    seq = [start + step*i for i in range(4)]
+    answer = start + step*4
 
-@app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+    options = [
+        answer,
+        answer + random.randint(1, 5),
+        answer - random.randint(1, 5),
+        answer + random.randint(6, 10)
+    ]
 
-    image_bytes = await file.read()
+    random.shuffle(options)
 
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    return {
+        "q": f"{seq[0]}, {seq[1]}, {seq[2]}, {seq[3]}, ?",
+        "options": options,
+        "answer": answer
+    }
 
-    image = image.resize((48, 48))
+if "questions" not in st.session_state:
+    st.session_state.questions = [generate_question() for _ in range(15)]
+    st.session_state.index = 0
+    st.session_state.score = 0
 
-    image = np.array(image) / 255.0
+if st.session_state.index < 15:
 
-    image = np.expand_dims(image, axis=0)
+    q = st.session_state.questions[st.session_state.index]
 
-    pred = model.predict(image)
+    st.write(f"Հարց {st.session_state.index + 1}")
+    st.write(q["q"])
 
-    emotion = classes[np.argmax(pred)]
+    choice = st.radio("Ընտրիր:", q["options"])
 
-    return {"emotion": emotion}
+    if st.button("Հաջորդ"):
+
+        if choice == q["answer"]:
+            st.session_state.score += 1
+
+        st.session_state.index += 1
+        st.rerun()
+
+else:
+
+    iq = 85 + st.session_state.score * 5
+
+    st.success(f"Քո IQ ≈ {iq}")
+    st.write("Ճիշտ պատասխաններ:", st.session_state.score)
